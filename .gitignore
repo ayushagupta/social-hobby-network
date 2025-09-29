@@ -1,2 +1,36 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pyc
+*.pyd
+*.pyo
+*.env
+
+# Virtual environments
 venv/
-.env
+.env/
+
+# Alembic migrations (optional)
+# alembic/versions/*
+
+# Editor/IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Database files (if using SQLite locally)
+*.db
+*.sqlite3
+
+# Optional: Pytest cache
+.pytest_cache/
