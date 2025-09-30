@@ -32,6 +32,14 @@ def create_group(group: schemas.GroupCreate,
         creator_id=current_user.id
     )
     db.add(new_group)
+    db.flush()
+
+    membership = models.Membership(
+        user_id=current_user.id,
+        group_id=new_group.id
+    )
+    db.add(membership)
+
     db.commit()
     db.refresh(new_group)
     return new_group
