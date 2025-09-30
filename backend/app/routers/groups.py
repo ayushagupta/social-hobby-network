@@ -45,9 +45,54 @@ def create_group(group: schemas.GroupCreate,
     return new_group
 
 
+@router.get("/{group_id}", response_model=schemas.GroupResponse)
+def get_group(group_id: int, db: Session = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
+    group = db.query(models.Group).filter(models.Group.id == group_id).first()
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found")
+    return group
+
+
 @router.get("/", response_model=List[schemas.GroupResponse])
 def list_groups(db: Session = Depends(database.get_db), current_user: models.User = Depends(get_current_user), hobby: str = None):
     query = db.query(models.Group)
     if hobby:
         query = query.filter(models.Group.hobby == hobby)
     return query.all()
+
+
+@router.put("/{group_id}", response_model=schemas.GroupResponse)
+def update_group(group_id: int,
+                 request: schemas.GroupUpdate,
+                 db: Session = Depends(database.get_db),
+                 current_user: models.User = Depends(get_current_user)):
+
+    group = db.query(models.Group).filter(models.Group.id == group_id).first()
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found")
+    
+    if group.creator_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Only group creator is allowed to make changes")
+    
+    if request.name:
+        group.name = request.name
+    if request.description:
+        group.description = request.description
+    
+    if request.creator_id is not None:
+        membership = (
+            db.query(models.Membership)
+            .filter(
+                models.Membership.user_id == request.creator_id,
+                models.Membership.group_id == group.id
+            )
+            .first()
+        )
+        if not membership:
+            raise HTTPException(status_code=400, detail="New creator must already be a member of the group")
+
+        group.creator_id = request.creator_id
+
+    db.commit()
+    db.refresh(group)
+    return group

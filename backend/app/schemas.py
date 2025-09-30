@@ -64,8 +64,14 @@ class GroupBase(BaseModel):
 class GroupCreate(GroupBase):
     pass
 
+class GroupUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    creator_id: Optional[int] = None
+
 class GroupResponse(GroupBase):
     id: int
+    creator_id: int
     created_at: datetime
 
     class Config:
