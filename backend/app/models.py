@@ -47,6 +47,9 @@ class Group(Base):
     hobby = Column(String, nullable=False)
     created_at = Column(TIMESTAMP, default=datetime.now(timezone.utc))
 
+    # Track the creator of the group
+    creator_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    
     # Relationship to memberships
     memberships = relationship("Membership", back_populates="group", cascade="all, delete-orphan")
 
