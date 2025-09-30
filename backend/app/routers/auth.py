@@ -24,12 +24,6 @@ def signup(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
     
-    print("----------- DEBUGGING SIGNUP -----------")
-    print(f"Value of user.password: {user.password}")
-    print(f"Type of user.password: {type(user.password)}")
-    print(f"Byte length: {len(user.password.encode('utf-8'))}")
-    print("--------------------------------------")
-    
     hobby_objects = []
     for hobby_name in user.hobbies:
         hobby = db.query(models.Hobby).filter(models.Hobby.name == hobby_name).first()
