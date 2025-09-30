@@ -27,6 +27,16 @@ class UserCreate(BaseModel):
     password: str
     hobbies: List[str] = []
 
+class UserUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    password: Optional[str] = None
+    hobbies: Optional[List[str]] = None
+
+    class Config:
+        orm_mode = True
+
+
 class UserResponse(BaseModel):
     id: int
     name: str
@@ -35,6 +45,14 @@ class UserResponse(BaseModel):
     created_at: datetime
 
     class Config:
+        orm_mode = True
+
+class UserPublic(BaseModel):
+    id: int
+    name: str
+    hobbies: List[HobbyResponse]
+
+    class config:
         orm_mode = True
 
 
