@@ -1,5 +1,5 @@
 import { createSlice } from '@reduxjs/toolkit';
-import { loginUser } from './authThunks';
+import { loginUser, registerUser } from './authThunks';
 
 // Get user data from localStorage if it exists
 const user = JSON.parse(localStorage.getItem('user'));
@@ -11,7 +11,7 @@ const initialState = {
   token: token || null,
   isLoggedIn: !!(user && token),
   // Use a status enum for more descriptive loading states
-  status: 'idle', // 'idle' | 'loading' | 'succeeded' | 'failed'
+  status: user ? 'succeeded' : 'idle', // 'idle' | 'loading' | 'succeeded' | 'failed'
   error: null,
 };
 
@@ -38,6 +38,10 @@ const authSlice = createSlice({
         state.status = 'loading';
         state.error = null;
       })
+      .addCase(registerUser.pending, (state) => {
+        state.status = 'loading';
+        state.error = null;
+      })
       .addCase(loginUser.fulfilled, (state, action) => {
         const { user, token } = action.payload;
 
@@ -50,9 +54,23 @@ const authSlice = createSlice({
         state.token = token;
         state.isLoggedIn = true;
       })
+      .addCase(registerUser.fulfilled, (state, action) => {
+        const { user, token } = action.payload;
+        localStorage.setItem('user', JSON.stringify(user));
+        localStorage.setItem('token', token);
+        state.status = 'succeeded';
+        state.user = user;
+        state.token = token;
+        state.isLoggedIn = true;
+      })
       .addCase(loginUser.rejected, (state, action) => {
         state.status = 'failed';
-        state.isLoggedIn = false; // Ensure this is false on failure
+        state.isLoggedIn = false;
+        state.error = action.payload;
+      })
+      .addCase(registerUser.rejected, (state, action) => {
+        state.status = 'failed';
+        state.isLoggedIn = false;
         state.error = action.payload;
       });
   },

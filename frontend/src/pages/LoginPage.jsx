@@ -18,7 +18,6 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (isLoggedIn) {
-      // FIX: Navigate to a route that actually exists, like "/groups"
       navigate("/groups", { replace: true });
     }
   }, [isLoggedIn, navigate]);
