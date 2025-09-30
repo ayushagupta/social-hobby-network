@@ -43,6 +43,7 @@ class UserResponse(BaseModel):
     email: EmailStr
     hobbies: List[HobbyResponse]
     created_at: datetime
+    group_memberships: List[int]
 
     class Config:
         orm_mode = True

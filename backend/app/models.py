@@ -27,6 +27,11 @@ class User(Base):
     # Relationship to groups (via memberships)
     memberships = relationship("Membership", back_populates="user", cascade="all, delete-orphan")
 
+    @property
+    def group_memberships(self) -> list[int]:
+        """Returns a list of group IDs the user is a member of."""
+        return [membership.group_id for membership in self.memberships]
+
 
 class Hobby(Base):
     __tablename__ = "hobbies"
