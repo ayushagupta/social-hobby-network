@@ -6,7 +6,7 @@ const publicApi = axios.create({
 });
 
 // 2. Create a private API instance for authenticated routes
-const privateApi = axios.create({
+export const privateApi = axios.create({
   baseURL: 'http://localhost:8000',
 });
 

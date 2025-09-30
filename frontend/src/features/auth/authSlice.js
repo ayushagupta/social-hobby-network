@@ -1,5 +1,6 @@
 import { createSlice } from '@reduxjs/toolkit';
 import { loginUser, registerUser } from './authThunks';
+import { createGroup, joinGroup, leaveGroup } from '../groups/groupsThunks';
 
 // Get user data from localStorage if it exists
 const user = JSON.parse(localStorage.getItem('user'));
@@ -10,7 +11,6 @@ const initialState = {
   user: user || null,
   token: token || null,
   isLoggedIn: !!(user && token),
-  // Use a status enum for more descriptive loading states
   status: user ? 'succeeded' : 'idle', // 'idle' | 'loading' | 'succeeded' | 'failed'
   error: null,
 };
@@ -42,6 +42,7 @@ const authSlice = createSlice({
         state.status = 'loading';
         state.error = null;
       })
+
       .addCase(loginUser.fulfilled, (state, action) => {
         const { user, token } = action.payload;
 
@@ -63,6 +64,7 @@ const authSlice = createSlice({
         state.token = token;
         state.isLoggedIn = true;
       })
+
       .addCase(loginUser.rejected, (state, action) => {
         state.status = 'failed';
         state.isLoggedIn = false;
@@ -72,6 +74,33 @@ const authSlice = createSlice({
         state.status = 'failed';
         state.isLoggedIn = false;
         state.error = action.payload;
+      })
+      
+      .addCase(createGroup.fulfilled, (state, action) => {
+        // When a group is created, add its ID to the user's memberships list
+        if (state.user && state.user.group_memberships) {
+          // The payload for createGroup is the new group object
+          state.user.group_memberships.push(action.payload.id);
+          localStorage.setItem('user', JSON.stringify(state.user));
+        }
+      })
+      
+      .addCase(joinGroup.fulfilled, (state, action) => {
+        if (state.user && state.user.group_memberships) {
+          // Add the new group's ID to the user's membership list
+          state.user.group_memberships.push(action.payload.groupId);
+          localStorage.setItem('user', JSON.stringify(state.user));
+        }
+      })
+      
+      .addCase(leaveGroup.fulfilled, (state, action) => {
+        if (state.user && state.user.group_memberships) {
+          // Filter out the group's ID from the membership list
+          state.user.group_memberships = state.user.group_memberships.filter(
+            (id) => id !== action.payload.groupId
+          );
+          localStorage.setItem('user', JSON.stringify(state.user));
+        }
       });
   },
 });
