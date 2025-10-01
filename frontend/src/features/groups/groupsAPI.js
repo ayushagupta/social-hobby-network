@@ -1,4 +1,4 @@
-import { privateApi } from '../auth/authAPI'; // Ensure privateApi is exported from your authAPI.js
+import { privateApi } from '../../api';
 
 // Fetch all available groups
 export const fetchGroupsAPI = async () => {

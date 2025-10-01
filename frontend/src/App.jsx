@@ -11,11 +11,13 @@ import { selectAuth } from "./features/auth/authSlice";
 function PrivateRoutes() {
   const { isLoggedIn, status } = useSelector(selectAuth);
 
-  // Show a loading state while Redux initializes
-  if (status === 'idle' || status === 'loading') {
+  // FIX: Only show the loading indicator during an active API call (e.g., login).
+  // Do not show it for the 'idle' state.
+  if (status === 'loading') {
     return <div>Loading...</div>; // Or a spinner component
   }
 
+  // If not actively loading, make a decision based purely on login status.
   return isLoggedIn ? <Outlet /> : <Navigate to="/login" replace />;
 }
 
