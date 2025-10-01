@@ -6,6 +6,7 @@ import GroupsPage from "./pages/GroupsPage";
 import GroupDetailPage from "./pages/GroupDetailPage";
 import { useSelector } from "react-redux";
 import { selectAuth } from "./features/auth/authSlice";
+import Layout from "./components/Layout";
 
 // Layout for routes only accessible to logged-in users
 function PrivateRoutes() {
@@ -13,7 +14,7 @@ function PrivateRoutes() {
 
   // FIX: Only show the loading indicator during an active API call (e.g., login).
   // Do not show it for the 'idle' state.
-  if (status === 'loading') {
+  if (status === "loading") {
     return <div>Loading...</div>; // Or a spinner component
   }
 
@@ -39,9 +40,11 @@ function App() {
 
       {/* Private routes (Profile, Groups, etc.) */}
       <Route element={<PrivateRoutes />}>
-        <Route path="/profile" element={<ProfilePage />} />
-        <Route path="/groups" element={<GroupsPage />} />
-        <Route path="/groups/:id" element={<GroupDetailPage />} />
+        <Route element={<Layout />}>
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/groups" element={<GroupsPage />} />
+          <Route path="/groups/:id" element={<GroupDetailPage />} />
+        </Route>
       </Route>
 
       {/* Fallback route - Navigate to a sensible default */}
