@@ -1,5 +1,5 @@
 import { createSlice } from '@reduxjs/toolkit';
-import { loginUser, registerUser } from './authThunks';
+import { loginUser, registerUser, updateUser } from './authThunks';
 import { createGroup, joinGroup, leaveGroup } from '../groups/groupsThunks';
 
 // Get user data from localStorage if it exists
@@ -31,6 +31,10 @@ const authSlice = createSlice({
       state.status = 'idle';
       state.error = null;
     },
+    // Action to clear the error message from the UI
+    clearAuthError: (state) => {
+      state.error = null;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -45,11 +49,8 @@ const authSlice = createSlice({
 
       .addCase(loginUser.fulfilled, (state, action) => {
         const { user, token } = action.payload;
-
-        // Save session to localStorage
         localStorage.setItem('user', JSON.stringify(user));
         localStorage.setItem('token', token);
-
         state.status = 'succeeded';
         state.user = user;
         state.token = token;
@@ -75,27 +76,37 @@ const authSlice = createSlice({
         state.isLoggedIn = false;
         state.error = action.payload;
       })
+
+      // --- Reducers for Profile Update ---
+      .addCase(updateUser.pending, (state) => {
+        state.status = 'loading';
+        state.error = null;
+      })
+      .addCase(updateUser.fulfilled, (state, action) => {
+        state.status = 'succeeded';
+        state.user = action.payload;
+        localStorage.setItem('user', JSON.stringify(action.payload));
+      })
+      .addCase(updateUser.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.payload;
+      })
       
+      // --- Reducers for Group Interactions ---
       .addCase(createGroup.fulfilled, (state, action) => {
-        // When a group is created, add its ID to the user's memberships list
         if (state.user && state.user.group_memberships) {
-          // The payload for createGroup is the new group object
           state.user.group_memberships.push(action.payload.id);
           localStorage.setItem('user', JSON.stringify(state.user));
         }
       })
-      
       .addCase(joinGroup.fulfilled, (state, action) => {
         if (state.user && state.user.group_memberships) {
-          // Add the new group's ID to the user's membership list
           state.user.group_memberships.push(action.payload.groupId);
           localStorage.setItem('user', JSON.stringify(state.user));
         }
       })
-      
       .addCase(leaveGroup.fulfilled, (state, action) => {
         if (state.user && state.user.group_memberships) {
-          // Filter out the group's ID from the membership list
           state.user.group_memberships = state.user.group_memberships.filter(
             (id) => id !== action.payload.groupId
           );
@@ -105,9 +116,10 @@ const authSlice = createSlice({
   },
 });
 
-export const { logout } = authSlice.actions;
+export const { logout, clearAuthError } = authSlice.actions;
 
 // It's good practice to co-locate selectors
 export const selectAuth = (state) => state.auth;
 
 export default authSlice.reducer;
+

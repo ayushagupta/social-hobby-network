@@ -37,3 +37,9 @@ export const getProfileAPI = async () => {
   const response = await privateApi.get('/users/me');
   return response.data;
 };
+
+// Update current user's profile API
+export const updateUserAPI = async (userData) => {
+  const response = await privateApi.put('/users/me', userData);
+  return response.data;
+};

@@ -1,5 +1,5 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
-import { loginAPI, getProfileAPI, signupAPI } from './authAPI';
+import { loginAPI, getProfileAPI, signupAPI, updateUserAPI } from './authAPI';
 
 export const loginUser = createAsyncThunk(
   'auth/loginUser',
@@ -42,6 +42,20 @@ export const registerUser = createAsyncThunk(
       }
     } catch (err) {
       return rejectWithValue(err.response?.data?.detail || err || 'Signup failed');
+    }
+  }
+);
+
+export const updateUser = createAsyncThunk(
+  'auth/updateUser',
+  async (userData, { rejectWithValue }) => {
+    try {
+      // Call the API to update the user on the backend
+      const updatedUser = await updateUserAPI(userData);
+      // Return the updated user object to be handled by the slice
+      return updatedUser;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.detail || 'Failed to update profile');
     }
   }
 );
