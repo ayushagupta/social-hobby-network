@@ -86,3 +86,22 @@ class MembershipResponse(BaseModel):
 
     class Config:
         orm_mode = True
+
+
+class PostBase(BaseModel):
+    title: str
+    content: str
+
+class PostCreate(PostBase):
+    pass
+
+class PostResponse(PostBase):
+    id: int
+    created_at: datetime
+    owner_id: int
+    group_id: int
+
+    owner: UserPublic
+
+    class Config:
+        orm_mode = True
