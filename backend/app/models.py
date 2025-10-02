@@ -71,3 +71,19 @@ class Membership(Base):
     # Relationships
     user = relationship("User", back_populates="memberships")
     group = relationship("Group", back_populates="memberships")
+
+
+class Post(Base):
+    __tablename__ = "posts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    content = Column(Text, nullable=False)
+    created_at = Column(TIMESTAMP, default=datetime.now(timezone.utc))
+
+    owner_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+
+    group_id = Column(Integer, ForeignKey("groups.id", ondelete="CASCADE"), nullable=False)
+
+    owner = relationship("User", back_populates="posts")
+    group = relationship("Group", back_populates="posts")
