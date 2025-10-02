@@ -24,6 +24,8 @@ class User(Base):
     # Relationship to hobbies (many-to-many)
     hobbies = relationship("Hobby", secondary=user_hobbies, back_populates="users")
 
+    posts = relationship("Post", back_populates="owner", cascade="all, delete-orphan")
+
     # Relationship to groups (via memberships)
     memberships = relationship("Membership", back_populates="user", cascade="all, delete-orphan")
 
@@ -57,6 +59,8 @@ class Group(Base):
     
     # Relationship to memberships
     memberships = relationship("Membership", back_populates="group", cascade="all, delete-orphan")
+
+    posts = relationship("Post", back_populates="group", cascade="all, delete-orphan")
 
 
 class Membership(Base):
