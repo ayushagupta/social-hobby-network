@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from typing import List
 
 from app import models, schemas, database, security
 from app.routers.auth import get_current_user
@@ -13,6 +14,23 @@ router = APIRouter(
 @router.get("/me", response_model=schemas.UserResponse)
 def get_my_profile(db: Session = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
     return current_user
+
+
+@router.get("/search", response_model=List[schemas.UserPublic])
+def search_users(
+    query: str,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    if not query:
+        return []
+
+    found_users = db.query(models.User).filter(
+        models.User.name.ilike(f"%{query}%"),
+        models.User.id != current_user.id
+    ).limit(10).all()
+
+    return found_users
 
 
 @router.get("/{user_id}", response_model=schemas.UserPublic)
@@ -88,4 +106,3 @@ def update_user(
     db.commit()
     db.refresh(user)
     return user
-

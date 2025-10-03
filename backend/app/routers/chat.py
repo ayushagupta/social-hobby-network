@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 from typing import List, Dict
 import logging
 import json # Import the json library
@@ -111,3 +111,61 @@ def get_chat_history(
     history = db.query(models.ChatMessage).filter(models.ChatMessage.group_id==group_id).order_by(models.ChatMessage.timestamp.desc()).limit(50).all()
     return history[::-1]
 
+
+@router.post("/dm/{target_user_id}", response_model=schemas.GroupResponse)
+def get_or_create_dm_channel(
+    target_user_id: int,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Finds an existing DM channel between two users or creates a new one.
+    Returns the group object that represents the DM channel.
+    """
+    if target_user_id == current_user.id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot create a DM with yourself.")
+
+    # Alias the Membership table to perform a self-join
+    Membership1 = aliased(models.Membership)
+    Membership2 = aliased(models.Membership)
+
+    # Query to find a DM group that contains both the current user and the target user
+    existing_dm = db.query(models.Group).join(
+        Membership1, models.Group.id == Membership1.group_id
+    ).join(
+        Membership2, models.Group.id == Membership2.group_id
+    ).filter(
+        models.Group.is_direct_message == True,
+        Membership1.user_id == current_user.id,
+        Membership2.user_id == target_user_id
+    ).first()
+
+    # If a DM channel already exists, return it
+    if existing_dm:
+        return existing_dm
+
+    # If no DM exists, create a new one
+    target_user = db.query(models.User).filter(models.User.id == target_user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Target user not found.")
+
+    # Create a new group marked as a DM
+    new_dm_group = models.Group(
+        name=f"DM between {current_user.name} and {target_user.name}",
+        description=f"Direct message channel",
+        hobby="Direct Message",
+        is_direct_message=True,
+        creator_id=current_user.id
+    )
+    db.add(new_dm_group)
+    db.flush()
+
+    # Add both users as members of this new DM group
+    membership1 = models.Membership(user_id=current_user.id, group_id=new_dm_group.id)
+    membership2 = models.Membership(user_id=target_user.id, group_id=new_dm_group.id)
+    db.add_all([membership1, membership2])
+    
+    db.commit()
+    db.refresh(new_dm_group)
+
+    return new_dm_group
