@@ -23,6 +23,7 @@ export default function ChatPage() {
     }
   }, [groupsStatus, dispatch]);
 
+  // Memoize the list of conversations to make it a stable dependency.
   const myConversations = useMemo(() => {
     if (user?.group_memberships) {
       return allGroups.filter(group => user.group_memberships.includes(group.id));
@@ -35,21 +36,17 @@ export default function ChatPage() {
     if (!activeGroupId && myConversations.length > 0) {
       setActiveGroupId(myConversations[0].id);
     }
-  }, [myConversations, activeGroupId]);
+  }, [myConversations]); // Dependency is now cleaner and more precise.
 
-  // --- THIS IS THE FIX ---
-  // This effect is now structured to prevent race conditions.
+  // This effect manages the WebSocket connection and fetches chat history.
   useEffect(() => {
     if (activeGroupId) {
-      // We start the new session immediately. The pending state of fetchChatHistory
-      // will handle clearing the old messages from view.
       dispatch(fetchChatHistory(activeGroupId));
       dispatch(startChatSession(activeGroupId));
     }
 
-    // The cleanup function now only runs when the component unmounts
-    // or before the effect runs for a *new* activeGroupId.
-    // This correctly disconnects the *previous* session's socket.
+    // The cleanup function disconnects the socket when the component unmounts
+    // or before the effect runs for a new activeGroupId.
     return () => {
       dispatch(endChatSession());
     };
