@@ -74,6 +74,7 @@ class GroupResponse(GroupBase):
     id: int
     creator_id: int
     created_at: datetime
+    is_direct_message: bool
 
     class Config:
         orm_mode = True
@@ -102,6 +103,23 @@ class PostResponse(PostBase):
     group_id: int
 
     owner: UserPublic
+
+    class Config:
+        orm_mode = True
+
+
+class ChatMessageBase(BaseModel):
+    content: str
+
+class ChatMessageCreate(ChatMessageBase):
+    pass
+
+class ChatMessageResponse(ChatMessageBase):
+    id: int
+    timestamp: datetime
+    user_id: int
+    group_id: int
+    user: UserPublic
 
     class Config:
         orm_mode = True
