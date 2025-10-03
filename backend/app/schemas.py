@@ -18,7 +18,7 @@ class HobbyResponse(HobbyBase):
     id: int
 
     class Config:
-        orm_mode = True  # allows reading SQLAlchemy objects directly
+        from_attributes = True  # allows reading SQLAlchemy objects directly
 
 
 class UserCreate(BaseModel):
@@ -34,7 +34,7 @@ class UserUpdate(BaseModel):
     hobbies: Optional[List[str]] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class UserResponse(BaseModel):
@@ -46,7 +46,7 @@ class UserResponse(BaseModel):
     group_memberships: List[int]
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class UserPublic(BaseModel):
     id: int
@@ -54,7 +54,7 @@ class UserPublic(BaseModel):
     hobbies: List[HobbyResponse]
 
     class config:
-        orm_mode = True
+        from_attributes = True
 
 
 class GroupBase(BaseModel):
@@ -77,7 +77,7 @@ class GroupResponse(GroupBase):
     is_direct_message: bool
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class MembershipResponse(BaseModel):
@@ -86,7 +86,7 @@ class MembershipResponse(BaseModel):
     joined_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class PostBase(BaseModel):
@@ -105,7 +105,7 @@ class PostResponse(PostBase):
     owner: UserPublic
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class ChatMessageBase(BaseModel):
@@ -122,4 +122,4 @@ class ChatMessageResponse(ChatMessageBase):
     user: UserPublic
 
     class Config:
-        orm_mode = True
+        from_attributes = True

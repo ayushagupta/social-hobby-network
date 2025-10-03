@@ -80,14 +80,14 @@ async def websocket_endpoint(
 def get_chat_history(
     group_id: int,
     db: Session = Depends(database.get_db),
-    current_user: models.User = get_current_user
+    current_user: models.User = Depends(get_current_user)
 ):
-    memebership = db.query(models.Membership).filter(
+    membership = db.query(models.Membership).filter(
         models.Membership.group_id == group_id,
         models.Membership.user_id == current_user.id
     ).first()
 
-    if not memebership:
+    if not membership:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You are not a member of this group")
     
     history = db.query(models.ChatMessage).filter(models.ChatMessage.group_id==group_id).order_by(models.ChatMessage.timestamp.desc()).limit(50).all()
