@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, TIMESTAMP, ForeignKey, Table, Text, UniqueConstraint
+from sqlalchemy import Column, Integer, String, TIMESTAMP, ForeignKey, Table, Text, UniqueConstraint, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from .database import Base
@@ -25,6 +25,8 @@ class User(Base):
     hobbies = relationship("Hobby", secondary=user_hobbies, back_populates="users")
 
     posts = relationship("Post", back_populates="owner", cascade="all, delete-orphan")
+
+    chat_messages = relationship("ChatMessage", back_populates="user", cascade="all, delete-orphan")
 
     # Relationship to groups (via memberships)
     memberships = relationship("Membership", back_populates="user", cascade="all, delete-orphan")
@@ -54,6 +56,8 @@ class Group(Base):
     hobby = Column(String, nullable=False)
     created_at = Column(TIMESTAMP, default=datetime.now(timezone.utc))
 
+    is_direct_message = Column(Boolean, default=False, nullable=False)
+
     # Track the creator of the group
     creator_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     
@@ -61,6 +65,8 @@ class Group(Base):
     memberships = relationship("Membership", back_populates="group", cascade="all, delete-orphan")
 
     posts = relationship("Post", back_populates="group", cascade="all, delete-orphan")
+
+    chat_messages = relationship("ChatMessage", back_populates="group", cascade="all, delete-orphan")
 
 
 class Membership(Base):
@@ -91,3 +97,21 @@ class Post(Base):
 
     owner = relationship("User", back_populates="posts")
     group = relationship("Group", back_populates="posts")
+
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    content = Column(Text, nullable=False)
+    timestamp = Column(TIMESTAMP(timezone=True), default=datetime.now(timezone.utc))
+
+    # Foreign key to link the message to its author (User)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    
+    # Foreign key to link the message to the group chat it's in
+    group_id = Column(Integer, ForeignKey("groups.id", ondelete="CASCADE"), nullable=False)
+
+    # Relationships to access the User and Group objects from a ChatMessage instance
+    user = relationship("User", back_populates="chat_messages")
+    group = relationship("Group", back_populates="chat_messages")
