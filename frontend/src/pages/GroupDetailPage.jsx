@@ -2,15 +2,21 @@ import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams } from 'react-router-dom';
 import { selectAuth } from '../features/auth/authSlice';
-import { selectGroups, clearCurrentGroup, clearGroupError } from '../features/groups/groupsSlice';
-import { selectPosts, clearPosts } from '../features/posts/postsSlice';
-import { fetchGroupById, fetchGroupMembers, joinGroup, leaveGroup } from '../features/groups/groupsThunks';
+import { 
+  fetchGroupById, 
+  fetchGroupMembers, 
+  joinGroup, 
+  leaveGroup,
+  updateGroup
+} from '../features/groups/groupsThunks';
 import { fetchPostsForGroup, createPostInGroup } from '../features/posts/postsThunks';
+import { clearPosts } from '../features/posts/postsSlice';
 import { Users, Edit, LogIn, LogOut, MessageSquare, Send } from 'lucide-react';
 import Toast from '../components/Toast';
 import PostList from '../components/PostList';
 import MemberList from '../components/MemberList';
 
+// A sub-component for the "Create Post" form, visible only to members.
 function CreatePostForm({ groupId }) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -19,8 +25,7 @@ function CreatePostForm({ groupId }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!title.trim() || !content.trim()) return;
-    const postData = { title, content };
-    dispatch(createPostInGroup({ groupId, postData }));
+    dispatch(createPostInGroup({ groupId, postData: { title, content } }));
     setTitle('');
     setContent('');
   };
@@ -38,7 +43,7 @@ function CreatePostForm({ groupId }) {
           required
         />
         <textarea
-          placeholder="What's on your mind?"
+          placeholder="Share something with the group..."
           value={content}
           onChange={(e) => setContent(e.target.value)}
           className="w-full p-2 border rounded-md mb-2 focus:ring-2 focus:ring-blue-500"
@@ -53,75 +58,91 @@ function CreatePostForm({ groupId }) {
   );
 }
 
-
-// --- Main Page Component ---
-
+// Main component for the Group Detail Page
 export default function GroupDetailPage() {
   const { id } = useParams();
   const groupId = parseInt(id, 10);
   const dispatch = useDispatch();
 
   const { user } = useSelector(selectAuth);
-  const { currentGroup, currentGroupStatus, currentGroupMembers, membersStatus, error: groupError } = useSelector(selectGroups);
   
-  // Fetch all necessary data on component mount
+  // This page now manages its own state for group-specific data
+  const [currentGroup, setCurrentGroup] = useState(null);
+  const [members, setMembers] = useState([]);
+  const [status, setStatus] = useState('idle'); // 'idle' | 'loading' | 'succeeded' | 'failed'
+  const [error, setError] = useState(null);
+
+  // Effect to fetch all necessary data when the page loads
   useEffect(() => {
     if (groupId) {
-      dispatch(fetchGroupById(groupId));
-      dispatch(fetchGroupMembers(groupId));
-      dispatch(fetchPostsForGroup(groupId));
+      setStatus('loading');
+      // Fetch group details, members, and posts in parallel for faster loading
+      Promise.all([
+        dispatch(fetchGroupById(groupId)).unwrap(),
+        dispatch(fetchGroupMembers(groupId)).unwrap(),
+        dispatch(fetchPostsForGroup(groupId)) // No unwrap needed if we don't need its direct result here
+      ])
+      .then(([groupData, membersData]) => {
+        setCurrentGroup(groupData);
+        setMembers(membersData);
+        setStatus('succeeded');
+      })
+      .catch((err) => {
+        // Use the specific error from the rejected thunk if available
+        setError(err || 'Failed to load group data.');
+        setStatus('failed');
+      });
     }
 
-    // Cleanup function to clear state when leaving the page
+    // Cleanup function to clear the posts slice when navigating away
     return () => {
-      dispatch(clearCurrentGroup());
       dispatch(clearPosts());
     };
   }, [dispatch, groupId]);
 
+  // Event handlers
   const handleJoin = () => dispatch(joinGroup(groupId));
   const handleLeave = () => dispatch(leaveGroup(groupId));
+  // Note: Edit/Update functionality would require an EditGroupModal and handler here
 
+  // Derived state for easy access in JSX
   const isUserMember = user?.group_memberships?.includes(groupId);
   const isAdmin = user?.id === currentGroup?.creator_id;
+  const admin = members.find(member => member.id === currentGroup?.creator_id);
 
-  // Find the admin object from the members list to display their name
-  const admin = currentGroupMembers.find(member => member.id === currentGroup?.creator_id);
-
-  if (currentGroupStatus === 'loading') {
-    return <div className="text-center p-10">Loading group...</div>;
+  if (status === 'loading') {
+    return <div className="text-center p-10 text-gray-500">Loading group...</div>;
   }
   
-  if (currentGroupStatus === 'failed') {
-    return <div className="text-center p-10 text-red-500">Error: {groupError || 'Group not found.'}</div>;
+  if (status === 'failed') {
+    return <div className="text-center p-10 text-red-500">Error: {error}</div>;
   }
 
   return (
-    <div className="bg-gray-50 min-h-screen">
-       {groupError && <Toast message={groupError} onClose={() => dispatch(clearGroupError())} />}
-
-      <div className="container mx-auto p-4 sm:p-6 lg:p-8">
+    <>
+       {error && <Toast message={error} onClose={() => setError(null)} />}
+       
+       <div className="container mx-auto p-4 sm:p-6 lg:p-8">
         {currentGroup && (
           <>
             {/* Group Header */}
             <header className="mb-8 p-6 bg-white rounded-lg shadow-md">
-              <div className="flex justify-between items-center">
+              <div className="flex flex-wrap justify-between items-center gap-4">
                 <div>
-                  <h1 className="text-4xl font-bold text-gray-800">{currentGroup.name}</h1>
-                  <p className="text-lg text-gray-500 mt-1">Hobby: <span className="font-semibold text-blue-600">{currentGroup.hobby}</span></p>
+                  <h1 className="text-4xl font-bold text-gray-800 tracking-tight">{currentGroup.name}</h1>
+                  <p className="text-lg text-gray-500 mt-1">A group for <span className="font-semibold text-blue-600">{currentGroup.hobby}</span></p>
                 </div>
-                 {/* Join/Leave/Edit Buttons */}
                 {isAdmin ? (
-                  <button className="flex items-center gap-2 px-4 py-2 bg-yellow-500 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-600">
-                    <Edit size={20} /> Edit
+                  <button className="flex items-center gap-2 px-4 py-2 bg-yellow-500 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-600 transition-all">
+                    <Edit size={20} /> Edit Group
                   </button>
                 ) : isUserMember ? (
-                  <button onClick={handleLeave} className="flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg shadow-md hover:bg-gray-300">
-                    <LogOut size={20} /> Leave
+                  <button onClick={handleLeave} className="flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg shadow-md hover:bg-gray-300 transition-all">
+                    <LogOut size={20} /> Leave Group
                   </button>
                 ) : (
-                  <button onClick={handleJoin} className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white font-semibold rounded-lg shadow-md hover:bg-green-600">
-                    <LogIn size={20} /> Join
+                  <button onClick={handleJoin} className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white font-semibold rounded-lg shadow-md hover:bg-green-600 transition-all">
+                    <LogIn size={20} /> Join Group
                   </button>
                 )}
               </div>
@@ -144,13 +165,13 @@ export default function GroupDetailPage() {
 
               {/* Right Column: Members */}
               <div className="lg:col-span-1">
-                <MemberList members={currentGroupMembers} status={membersStatus} />
+                <MemberList members={members} status={status} />
               </div>
             </div>
           </>
         )}
       </div>
-    </div>
+    </>
   );
 }
 

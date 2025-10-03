@@ -8,6 +8,24 @@ export const fetchChatHistoryAPI = async (groupId) => {
   return response.data;
 };
 
+// Search for users by name
+export const searchUsersAPI = async (query) => {
+  const response = await privateApi.get(`/users/search?query=${query}`);
+  return response.data;
+};
+
+// Get or create a DM channel with a target user
+export const startDirectMessageAPI = async (targetUserId) => {
+  const response = await privateApi.post(`/chat/dm/${targetUserId}`);
+  return response.data;
+};
+
+// Fetch all conversations (groups and DMs) for the current user
+export const fetchConversationsAPI = async () => {
+  const response = await privateApi.get(`/chat/conversations`);
+  return response.data;
+};
+
 export const connectWebSocket = (groupId, token, onMessageCallback, dispatch) => {
   // Disconnect any existing socket before creating a new one.
   if (socket) {

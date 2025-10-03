@@ -55,7 +55,7 @@ def get_group(group_id: int, db: Session = Depends(database.get_db), current_use
 
 @router.get("/", response_model=List[schemas.GroupResponse])
 def list_groups(db: Session = Depends(database.get_db), current_user: models.User = Depends(get_current_user), hobby: str = None):
-    query = db.query(models.Group)
+    query = db.query(models.Group).filter(models.Group.is_direct_message == False)
     if hobby:
         query = query.filter(models.Group.hobby == hobby)
     return query.all()

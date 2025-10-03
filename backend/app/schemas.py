@@ -75,6 +75,7 @@ class GroupResponse(GroupBase):
     creator_id: int
     created_at: datetime
     is_direct_message: bool
+    members: List[UserPublic]
 
     class Config:
         from_attributes = True

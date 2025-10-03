@@ -1,19 +1,73 @@
-import { createAsyncThunk } from '@reduxjs/toolkit';
-import { fetchChatHistoryAPI, connectWebSocket, sendChatMessage, disconnectWebSocket } from './chatAPI';
-import { addMessage } from './chatSlice';
+import { createAsyncThunk } from "@reduxjs/toolkit";
+import {
+  fetchChatHistoryAPI,
+  connectWebSocket,
+  sendChatMessage,
+  disconnectWebSocket,
+  startDirectMessageAPI,
+  fetchConversationsAPI
+} from "./chatAPI";
+import { addMessage } from "./chatSlice";
 
 /**
  * An async thunk for a standard REST API call.
  * This fetches the initial message history for a chat room.
  */
 export const fetchChatHistory = createAsyncThunk(
-  'chat/fetchHistory',
+  "chat/fetchHistory",
   async (groupId, { rejectWithValue }) => {
     try {
       const history = await fetchChatHistoryAPI(groupId);
       return history;
     } catch (err) {
-      return rejectWithValue(err.response?.data?.detail || 'Failed to fetch chat history');
+      return rejectWithValue(
+        err.response?.data?.detail || "Failed to fetch chat history"
+      );
+    }
+  }
+);
+
+export const startDirectMessage = createAsyncThunk(
+  "chat/startDirectMessage",
+  async (targetUserId, { rejectWithValue }) => {
+    // Log #1: Check if the thunk starts and receives the correct user ID.
+    console.log(
+      `[DEBUG] startDirectMessage thunk initiated for user ID: ${targetUserId}`
+    );
+
+    try {
+      // Log #2: Check right before the API call is made.
+      console.log("[DEBUG] Attempting to call startDirectMessageAPI...");
+
+      const group = await startDirectMessageAPI(targetUserId);
+
+      // Log #3: This will only run if the API call is successful.
+      console.log("[DEBUG] API call successful. Received group:", group);
+
+      return group;
+    } catch (err) {
+      // Log #4: This will run if any error occurs in the `try` block.
+      // We log the entire error object to see the full details.
+      console.error("[DEBUG] Error caught in startDirectMessage thunk:", err);
+
+      return rejectWithValue(
+        err.response?.data?.detail || "Failed to start direct message"
+      );
+    }
+  }
+);
+
+// Thunk to fetch all of a user's conversations
+export const fetchConversations = createAsyncThunk(
+  "chat/fetchConversations",
+  async (_, { rejectWithValue }) => {
+    try {
+      const conversations = await fetchConversationsAPI();
+      return conversations;
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.detail || "Failed to fetch conversations"
+      );
     }
   }
 );
@@ -56,4 +110,3 @@ export const sendMessage = (messageContent) => () => {
 export const endChatSession = () => () => {
   disconnectWebSocket();
 };
-

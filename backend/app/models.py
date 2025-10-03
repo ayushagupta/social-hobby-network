@@ -68,6 +68,11 @@ class Group(Base):
 
     chat_messages = relationship("ChatMessage", back_populates="group", cascade="all, delete-orphan")
 
+    @property
+    def members(self) -> list:
+        """Returns a list of User objects who are members of this group."""
+        return [membership.user for membership in self.memberships]
+
 
 class Membership(Base):
     __tablename__ = "memberships"
