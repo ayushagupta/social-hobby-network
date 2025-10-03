@@ -104,7 +104,7 @@ class ChatMessage(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     content = Column(Text, nullable=False)
-    timestamp = Column(TIMESTAMP(timezone=True), default=datetime.now(timezone.utc))
+    timestamp = Column(TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     # Foreign key to link the message to its author (User)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)

@@ -7,6 +7,7 @@ import GroupDetailPage from "./pages/GroupDetailPage";
 import { useSelector } from "react-redux";
 import { selectAuth } from "./features/auth/authSlice";
 import Layout from "./components/Layout";
+import ChatPage from "./pages/ChatPage";
 
 // Layout for routes only accessible to logged-in users
 function PrivateRoutes() {
@@ -44,6 +45,7 @@ function App() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/groups" element={<GroupsPage />} />
           <Route path="/groups/:id" element={<GroupDetailPage />} />
+          <Route path="/chat" element={<ChatPage />} />
         </Route>
       </Route>
 
