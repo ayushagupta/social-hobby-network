@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, status, Security
+from fastapi import APIRouter, HTTPException, Depends, status, Security, WebSocket
 from sqlalchemy.orm import Session
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
@@ -77,4 +77,32 @@ def get_current_user(
     if user is None:
         raise credentials_exception
 
+    return user
+
+
+async def get_current_user_ws(
+    websocket: WebSocket,
+    db: Session = Depends(database.get_db)
+) -> models.User | None:
+    # Get the token form query parameter
+    token = websocket.query_params.get("token")
+    if not token:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Missing token")
+        return None
+    
+    try:
+        payload = jwt.decode(token, security.SECRET_KEY, algorithms=[security.ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid token payload")
+            return None
+    except JWTError:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid token")
+        return None
+
+    user = db.query(models.User).filter(models.User.email == email).first()
+    if not user:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="User not found")
+        return None
+    
     return user
