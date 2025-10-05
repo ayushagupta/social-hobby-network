@@ -16,6 +16,14 @@ const groupsSlice = createSlice({
     clearGroupError: (state) => {
       state.error = null;
     },
+    addConversation: (state, action) => {
+      const newGroup = action.payload;
+      // Add the new DM/group to the state if it's not already there.
+      const groupExists = state.items.some(group => group.id === newGroup.id);
+      if (!groupExists) {
+        state.items.push(newGroup);
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -61,6 +69,6 @@ const groupsSlice = createSlice({
   },
 });
 
-export const { clearGroupError } = groupsSlice.actions;
+export const { clearGroupError, addConversation } = groupsSlice.actions;
 export const selectGroups = (state) => state.groups;
 export default groupsSlice.reducer;

@@ -30,6 +30,14 @@ const authSlice = createSlice({
     clearAuthError: (state) => {
       state.error = null;
     },
+    addGroupMembership: (state, action) => {
+      const groupId = action.payload;
+      if (state.user?.group_memberships && !state.user.group_memberships.includes(groupId)) {
+        state.user.group_memberships.push(groupId);
+        // Also update localStorage to keep it in sync.
+        localStorage.setItem('user', JSON.stringify(state.user));
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -108,6 +116,6 @@ const authSlice = createSlice({
   },
 });
 
-export const { logout, clearAuthError } = authSlice.actions;
+export const { logout, clearAuthError, addGroupMembership } = authSlice.actions;
 export const selectAuth = (state) => state.auth;
 export default authSlice.reducer;

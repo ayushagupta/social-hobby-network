@@ -31,23 +31,18 @@ class NotificationManager:
             task.cancel()
 
     async def _redis_listener(self, user_id: int):
-        pubsub = redis_client.pubsub()
         channel = f"notifications:{user_id}"
-        await pubsub.subscribe(channel)
-        logging.info(f"Subscribed to notification channel: {channel}")
-
         try:
-            while True:
-                message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=None)
-                if message and message["type"] == "message":
-                    message_data = message["data"]
-                    if user_id in self.active_connections:
-                        await self.active_connections[user_id].send_text(message_data)
+            async with redis_client.pubsub() as pubsub:
+                await pubsub.subscribe(channel)
+                logging.info(f"Subscribed to notification channel: {channel}")
+                while True:
+                    message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=None)
+                    if message:
+                        if user_id in self.active_connections:
+                            await self.active_connections[user_id].send_text(message["data"])
         except asyncio.CancelledError:
-            logging.info(f"Notification listener for {channel} cancelled")
-        finally:
-            await pubsub.unsubscribe(channel)
-            logging.info(f"Unsubscribed from notification channel: {channel}")
+            logging.info(f"Notification listener for {channel} cancelled.")
         
     
 notification_manager = NotificationManager()

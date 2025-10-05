@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
+import json
 
 from app import models, schemas, security, database
 from app.routers.auth import get_current_user
+from ..redis_client import redis_client
 
 router = APIRouter(
     prefix="/groups/{group_id}/posts",
@@ -11,7 +13,7 @@ router = APIRouter(
 )
 
 @router.post("/", response_model=schemas.PostResponse, status_code=status.HTTP_201_CREATED)
-def create_post_in_group(
+async def create_post_in_group(
     group_id: int,
     post: schemas.PostCreate,
     db: Session = Depends(database.get_db),
@@ -37,6 +39,23 @@ def create_post_in_group(
     db.add(new_post)
     db.commit()
     db.refresh(new_post)
+
+    notification_payload = {
+        "type": "NEW_POST",
+        "payload": {
+            "group_id": group_id,
+            "post_title": new_post.title,
+            "author_name": current_user.name
+        }
+    }
+    notification_json = json.dumps(notification_payload)
+
+    # Get all members of the group to notify them
+    group_members = db.query(models.Membership).filter(models.Membership.group_id == group_id).all()
+    for member in group_members:
+        # Don't send a notification to the person who created the post
+        if member.user_id != current_user.id:
+            await redis_client.publish(f"notifications:{member.user_id}", notification_json)
 
     return new_post
 

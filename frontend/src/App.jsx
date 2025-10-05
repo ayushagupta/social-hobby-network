@@ -8,25 +8,32 @@ import { useSelector } from "react-redux";
 import { selectAuth } from "./features/auth/authSlice";
 import Layout from "./components/Layout";
 import ChatPage from "./pages/ChatPage";
+import NotificationHandler from "./components/NotificationHandler";
 
 // Layout for routes only accessible to logged-in users
 function PrivateRoutes() {
   const { isLoggedIn, status } = useSelector(selectAuth);
 
-  // FIX: Only show the loading indicator during an active API call (e.g., login).
-  // Do not show it for the 'idle' state.
   if (status === "loading") {
-    return <div>Loading...</div>; // Or a spinner component
+    return <div className="flex justify-center items-center h-screen">Loading...</div>;
   }
 
-  // If not actively loading, make a decision based purely on login status.
-  return isLoggedIn ? <Outlet /> : <Navigate to="/login" replace />;
+  // If the user is logged in, render the NotificationHandler (which has no UI)
+  // and then render the rest of the protected pages via the <Outlet />.
+  // Otherwise, redirect to the login page.
+  return isLoggedIn ? (
+    <>
+      <NotificationHandler />
+      <Outlet />
+    </>
+  ) : (
+    <Navigate to="/login" replace />
+  );
 }
 
 // Layout for routes only accessible to logged-out users
 function PublicRoutes() {
   const { isLoggedIn } = useSelector(selectAuth);
-  // Redirect to a default page if the user is already logged in
   return isLoggedIn ? <Navigate to="/groups" replace /> : <Outlet />;
 }
 
@@ -39,20 +46,22 @@ function App() {
         <Route path="/signup" element={<SignupPage />} />
       </Route>
 
-      {/* Private routes (Profile, Groups, etc.) */}
+      {/* PrivateRoutes */}
       <Route element={<PrivateRoutes />}>
         <Route element={<Layout />}>
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/groups" element={<GroupsPage />} />
           <Route path="/groups/:id" element={<GroupDetailPage />} />
           <Route path="/chat" element={<ChatPage />} />
+          <Route index element={<Navigate to="/groups" />} />
         </Route>
       </Route>
 
-      {/* Fallback route - Navigate to a sensible default */}
-      <Route path="*" element={<Navigate to="/groups" />} />
+      {/* Fallback route */}
+      <Route path="*" element={<Navigate to="/login" />} />
     </Routes>
   );
 }
 
 export default App;
+

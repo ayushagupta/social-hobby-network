@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List
 
 from app import models, schemas, database, security
@@ -54,11 +54,17 @@ def get_group(group_id: int, db: Session = Depends(database.get_db), current_use
 
 
 @router.get("/", response_model=List[schemas.GroupResponse])
-def list_groups(db: Session = Depends(database.get_db), current_user: models.User = Depends(get_current_user), hobby: str = None):
-    query = db.query(models.Group).filter(models.Group.is_direct_message == False)
-    if hobby:
-        query = query.filter(models.Group.hobby == hobby)
-    return query.all()
+def list_groups(
+    db: Session = Depends(database.get_db),
+    current_user = Depends(get_current_user)
+):
+    options = joinedload(models.Group.memberships).joinedload(models.Membership.user)
+
+    public_groups = db.query(models.Group).options(options).filter(
+        models.Group.is_direct_message == False
+    ).all()
+    
+    return public_groups
 
 
 @router.put("/{group_id}", response_model=schemas.GroupResponse)

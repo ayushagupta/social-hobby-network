@@ -6,6 +6,7 @@ import { selectGroups, clearGroupError } from '../features/groups/groupsSlice';
 import { fetchGroups, joinGroup, leaveGroup, createGroup } from '../features/groups/groupsThunks';
 import { PlusCircle } from 'lucide-react';
 import Toast from '../components/Toast';
+import { clearUnreadPostCount } from '../features/notifications/notificationsSlice';
 
 function CreateGroupModal({ isOpen, onClose, onCreate }) {
   const [name, setName] = useState('');
@@ -82,6 +83,11 @@ export default function GroupsPage() {
   const { user } = useSelector(selectAuth);
   const { items: allGroups, status, error } = useSelector(selectGroups);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // When the user navigates to the groups page, clear any new post notifications.
+  useEffect(() => {
+    dispatch(clearUnreadPostCount());
+  }, [dispatch]);
 
   // Fetch groups only if they haven't been fetched yet
   useEffect(() => {

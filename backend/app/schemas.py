@@ -53,7 +53,7 @@ class UserPublic(BaseModel):
     name: str
     hobbies: List[HobbyResponse]
 
-    class config:
+    class Config:
         from_attributes = True
 
 
