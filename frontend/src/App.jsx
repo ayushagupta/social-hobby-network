@@ -8,6 +8,7 @@ import { useSelector } from "react-redux";
 import { selectAuth } from "./features/auth/authSlice";
 import Layout from "./components/Layout";
 import ChatPage from "./pages/ChatPage";
+import SearchPage from "./pages/SearchPage";
 import NotificationHandler from "./components/NotificationHandler";
 
 // Layout for routes only accessible to logged-in users
@@ -53,6 +54,7 @@ function App() {
           <Route path="/groups" element={<GroupsPage />} />
           <Route path="/groups/:id" element={<GroupDetailPage />} />
           <Route path="/chat" element={<ChatPage />} />
+          <Route path="/search" element={<SearchPage />} />
           <Route index element={<Navigate to="/groups" />} />
         </Route>
       </Route>

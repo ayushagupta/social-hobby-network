@@ -4,6 +4,7 @@ import groupsReducer from '../features/groups/groupsSlice';
 import postsReducer from '../features/posts/postsSlice';
 import chatReducer from '../features/chat/chatSlice';
 import notificationsReducer from '../features/notifications/notificationsSlice';
+import searchReducer from '../features/search/searchSlice';
 
 export const store = configureStore({
   reducer: {
@@ -12,6 +13,7 @@ export const store = configureStore({
     posts: postsReducer,
     chat: chatReducer,
     notifications: notificationsReducer,
+    search: searchReducer
   },
 });
 
