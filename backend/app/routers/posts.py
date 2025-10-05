@@ -1,21 +1,42 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List
 import json
+import logging
 
 from app import models, schemas, security, database
 from app.routers.auth import get_current_user
 from ..redis_client import redis_client
+from app.es_client import es_client
 
 router = APIRouter(
     prefix="/groups/{group_id}/posts",
     tags=["posts"]
 )
 
+
+async def index_post(post: models.Post):
+    try:
+        doc = {
+            "title": post.title,
+            "content": post.content,
+            "group_id": post.group_id
+        }
+        await es_client.index(
+            index="posts",
+            id=post.id,
+            document=doc
+        )
+        logging.info(f"Successfully indexed post {post.id}")
+    except Exception as e:
+        logging.error(f"Failed to index post {post.id}: {e}")
+
+
 @router.post("/", response_model=schemas.PostResponse, status_code=status.HTTP_201_CREATED)
 async def create_post_in_group(
     group_id: int,
     post: schemas.PostCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(get_current_user)
 ):
@@ -39,6 +60,8 @@ async def create_post_in_group(
     db.add(new_post)
     db.commit()
     db.refresh(new_post)
+
+    background_tasks.add_task(index_post, new_post)
 
     notification_payload = {
         "type": "NEW_POST",

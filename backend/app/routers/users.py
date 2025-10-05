@@ -1,14 +1,44 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List
+import logging
 
 from app import models, schemas, database, security
 from app.routers.auth import get_current_user
+from app.es_client import es_client
 
 router = APIRouter(
     prefix="/users",
     tags=["users"]
 )
+
+
+async def index_user(user_id: int):
+    # Create a new, independent database session for this background task.
+    db = next(database.get_db())
+    try:
+        # Fetch a fresh copy of the user with their relationships.
+        user = db.query(models.User).filter(models.User.id == user_id).first()
+        if not user:
+            logging.error(f"User with ID {user_id} not found for indexing.")
+            return
+        
+        doc = {
+            "name": user.name,
+            "email": user.email,
+            "hobbies": [hobby.name for hobby in user.hobbies]
+        }
+        await es_client.index(
+            index="users",
+            id=user.id,
+            document=doc
+        )
+        logging.info(f"Successfully indexed user {user.id}")
+    except Exception as e:
+        logging.error(f"Failed to index user {user_id}: {e}")
+    finally:
+        # Always close the session.
+        db.close()
 
 
 @router.get("/me", response_model=schemas.UserResponse)
@@ -45,6 +75,7 @@ def get_user(user_id: int, db: Session = Depends(database.get_db), current_user:
 @router.put("/me", response_model=schemas.UserResponse)
 def update_user(
     user_update: schemas.UserUpdate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(get_current_user)
 ):
@@ -105,4 +136,7 @@ def update_user(
 
     db.commit()
     db.refresh(user)
+
+    background_tasks.add_task(index_user, user.id)
+
     return user

@@ -1,7 +1,9 @@
-from fastapi import APIRouter, HTTPException, Depends, status, Security, WebSocket
+from fastapi import APIRouter, HTTPException, Depends, status, Security, WebSocket, BackgroundTasks
 from sqlalchemy.orm import Session
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
+import logging
+from app.es_client import es_client
 
 from app import models, schemas, database, security
 
@@ -24,8 +26,33 @@ def login(request: schemas.LoginRequest, db: Session = Depends(database.get_db))
     return token_response
 
 
+async def index_user(user: models.User):
+    """Takes a user object from the DB and indexes it into Elasticsearch."""
+    try:
+        # Prepare the data document for Elasticsearch.
+        doc = {
+            "name": user.name,
+            "email": user.email,
+            "hobbies": [hobby.name for hobby in user.hobbies]
+        }
+        # Send the document to the 'users' index in Elasticsearch.
+        await es_client.index(
+            index="users",
+            id=user.id,
+            document=doc
+        )
+        logging.info(f"Successfully indexed user {user.id}")
+    except Exception as e:
+        logging.error(f"Failed to index user {user.id}: {e}")
+        
+
+
 @router.post("/signup", response_model=schemas.UserResponse)
-def signup(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
+def signup(
+    user: schemas.UserCreate, 
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(database.get_db)
+):
     existing_user = db.query(models.User).filter(models.User.email == user.email).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -50,6 +77,8 @@ def signup(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
     db.commit()
     db.refresh(new_user)
 
+    background_tasks.add_task(index_user, new_user)
+    
     return new_user
 
 

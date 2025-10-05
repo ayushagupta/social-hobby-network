@@ -1,17 +1,39 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from sqlalchemy.orm import Session, joinedload
 from typing import List
+import logging
 
 from app import models, schemas, database, security
 from app.routers.auth import get_current_user
+from app.es_client import es_client
 
 router = APIRouter(
     prefix="/groups",
     tags=["groups"]
 )
 
+
+async def index_group(group: models.Group):
+    """Takes a group object from the DB and indexes it into Elasticsearch."""
+    try:
+        doc = {
+            "name": group.name,
+            "description": group.description,
+            "hobby": group.hobby
+        }
+        await es_client.index(
+            index="groups",
+            id=group.id,
+            document=doc
+        )
+        logging.info(f"Successfully indexed group {group.id}")
+    except Exception as e:
+        logging.error(f"Failed to index group {group.id}: {e}")
+
+
 @router.post("/", response_model=schemas.GroupResponse)
 def create_group(group: schemas.GroupCreate, 
+                 background_tasks: BackgroundTasks,
                  db: Session = Depends(database.get_db), 
                  current_user: models.User = Depends(get_current_user)):
     existing_group = db.query(models.Group).filter(models.Group.name == group.name).first()
@@ -42,6 +64,9 @@ def create_group(group: schemas.GroupCreate,
 
     db.commit()
     db.refresh(new_group)
+
+    background_tasks.add_task(index_group, new_group)
+
     return new_group
 
 
@@ -70,6 +95,7 @@ def list_groups(
 @router.put("/{group_id}", response_model=schemas.GroupResponse)
 def update_group(group_id: int,
                  request: schemas.GroupUpdate,
+                 background_tasks: BackgroundTasks,
                  db: Session = Depends(database.get_db),
                  current_user: models.User = Depends(get_current_user)):
 
@@ -101,4 +127,7 @@ def update_group(group_id: int,
 
     db.commit()
     db.refresh(group)
+
+    background_tasks.add_task(index_group, group)
+    
     return group
