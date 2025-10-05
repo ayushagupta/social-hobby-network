@@ -99,7 +99,10 @@ def update_user(
         # Identify hobbies that can't be removed because the user is a creator
         protected_hobbies = set(
             db.query(models.Group.hobby)
-            .filter(models.Group.creator_id == user.id)
+            .filter(
+                models.Group.creator_id == user.id,
+                models.Group.is_direct_message == False
+            )
             .all()
         )
         # The query returns list of tuples, so convert
