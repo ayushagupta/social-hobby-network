@@ -3,15 +3,19 @@ from sqlalchemy.orm import Session, aliased, joinedload
 from typing import List, Dict
 import logging
 import json
+import asyncio
 
-from .. import database, models, schemas
+from app import database, models, schemas
 from .auth import get_current_user, get_current_user_ws
+from ..redis_client import redis_client
 
 # This class manages all active WebSocket connections for the application.
-class ConnectionManager:
+class ChatManager:
     def __init__(self):
         # Maps group_id to a list of active WebSocket connections.
         self.active_connections: Dict[int, List[WebSocket]] = {}
+        # Dictionary to keep tracks of background tasks
+        self.listener_tasks: Dict[int, asyncio.Task] = {}
 
     async def connect(self, websocket: WebSocket, group_id: int):
         await websocket.accept()
@@ -19,17 +23,45 @@ class ConnectionManager:
             self.active_connections[group_id] = []
         self.active_connections[group_id].append(websocket)
 
+        if group_id not in self.listener_tasks:
+            self.listener_tasks[group_id] = asyncio.create_task(self._redis_listener(group_id))
+
     def disconnect(self, websocket: WebSocket, group_id: int):
         # Safely remove the websocket from the list to prevent errors.
         if group_id in self.active_connections and websocket in self.active_connections[group_id]:
             self.active_connections[group_id].remove(websocket)
+            # Stop the listener task if it was the last connection in its group
+            if not self.active_connections[group_id]:
+                task = self.listener_tasks.pop(group_id, None)
+                if task:
+                    task.cancel()
 
-    async def broadcast(self, message: str, group_id: int):
-        if group_id in self.active_connections:
-            for connection in self.active_connections[group_id]:
-                await connection.send_text(message)
+    async def _redis_listener(self, group_id: int):
+        pubsub = redis_client.pubsub()
+        channel = f"chat:{group_id}"
+        await pubsub.subscribe(channel)
+        logging.info(f"Subscribed to redis channel: {channel}")
 
-manager = ConnectionManager()
+        try:
+            while True:
+                message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=None)
+                if message and message["type"]=="message":
+                    message_data = message["data"]
+                    if group_id in self.active_connections:
+                        for connection in self.active_connections[group_id]:
+                            await connection.send_text(message_data)
+        except asyncio.CancelledError:
+            logging.info(f"Listener for {channel} cancelled")
+        finally:
+            await pubsub.unsubscribe(channel)
+            logging.info(f"Unsubscribed from Redis channel: {channel}")
+
+    async def publish_to_channel(self, message: str, group_id: int):
+        channel = f"chat:{group_id}"
+        await redis_client.publish(channel=channel, message=message)
+
+
+chat_manager = ChatManager()
 
 router = APIRouter(
     prefix="/chat",
@@ -55,7 +87,7 @@ async def websocket_endpoint(
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Not a member of this group")
         return
 
-    await manager.connect(websocket, group_id)
+    await chat_manager.connect(websocket, group_id)
     try:
         while True:
             data = await websocket.receive_text()
@@ -72,13 +104,13 @@ async def websocket_endpoint(
 
             response_message_json = schemas.ChatMessageResponse.from_orm(new_message).json()
 
-            await manager.broadcast(response_message_json, group_id)
+            await chat_manager.publish_to_channel(response_message_json, group_id)
             
     except WebSocketDisconnect:
-        manager.disconnect(websocket, group_id)
+        chat_manager.disconnect(websocket, group_id)
     except Exception as e:
         logging.error(f"An error occurred in websocket for group {group_id}: {e}")
-        manager.disconnect(websocket, group_id)
+        chat_manager.disconnect(websocket, group_id)
 
 
 @router.get("/conversations", response_model=List[schemas.GroupResponse])
